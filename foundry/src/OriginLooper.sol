@@ -3,24 +3,60 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IPool {
-    function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
-    function borrow(address asset, uint256 amount, uint256 interestRateMode, uint16 referralCode, address onBehalfOf) external;
-    function getUserAccountData(address user) external view returns (uint256 totalCollateralBase, uint256 totalDebtBase, uint256 availableBorrowsBase, uint256 currentLiquidationThreshold, uint256 ltv, uint256 healthFactor);
+    function supply(
+        address asset,
+        uint256 amount,
+        address onBehalfOf,
+        uint16 referralCode
+    ) external;
+    function borrow(
+        address asset,
+        uint256 amount,
+        uint256 interestRateMode,
+        uint16 referralCode,
+        address onBehalfOf
+    ) external;
+    function getUserAccountData(
+        address user
+    )
+        external
+        view
+        returns (
+            uint256 totalCollateralBase,
+            uint256 totalDebtBase,
+            uint256 availableBorrowsBase,
+            uint256 currentLiquidationThreshold,
+            uint256 ltv,
+            uint256 healthFactor
+        );
 }
 
 interface ISwapRouter {
     struct ExactInputSingleParams {
-        address tokenIn; address tokenOut; uint24 fee; address recipient; uint256 deadline; uint256 amountIn; uint256 amountOutMinimum; uint160 sqrtPriceLimitX96;
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
     }
-    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+    function exactInputSingle(
+        ExactInputSingleParams calldata params
+    ) external payable returns (uint256 amountOut);
 }
 
-interface IWETH is IERC20 { function deposit() external payable; }
+interface IWETH is IERC20 {
+    function deposit() external payable;
+}
 
 contract OriginLooper {
-    address public constant AAVE_POOL = 0x6Ae9784f96A58aAf26C31D9d445c7553f146F259;
-    address public constant UNISWAP_ROUTER = 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E;
-    address public constant WETH = 0xfFf9976782d46cc05630d1f6ebab18b2324d6b14;
+    address public constant AAVE_POOL =
+        0x6aE9784f96A58aAf26C31D9d445c7553f146F259;
+    address public constant UNISWAP_ROUTER =
+        0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E;
+    address public constant WETH = 0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14;
     address public constant USDC = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
     uint256 public constant TARGET_LTV = 7500;
     uint256 public constant MAX_LOOPS = 5;
@@ -28,7 +64,9 @@ contract OriginLooper {
     event LoopRequested(address indexed user, uint256 amount);
     event LoopCompleted(uint256 finalLTV, uint256 iterations);
 
-    constructor(address _reactiveSender) { reactiveSender = _reactiveSender; }
+    constructor(address _reactiveSender) {
+        reactiveSender = _reactiveSender;
+    }
 
     function deposit() external payable {
         IWETH(WETH).deposit{value: msg.value}();
@@ -41,15 +79,26 @@ contract OriginLooper {
         uint256 iterations = 0;
         uint256 currentLTV = getLTV();
         while (currentLTV < TARGET_LTV && iterations < MAX_LOOPS) {
-            ( , , uint256 availableBorrowsBase, , , ) = IPool(AAVE_POOL).getUserAccountData(address(this));
+            (, , uint256 availableBorrowsBase, , , ) = IPool(AAVE_POOL)
+                .getUserAccountData(address(this));
             uint256 borrowAmount = (availableBorrowsBase * 50) / 100;
             if (borrowAmount == 0) break;
             IPool(AAVE_POOL).borrow(USDC, borrowAmount, 2, 0, address(this));
             IERC20(USDC).approve(UNISWAP_ROUTER, borrowAmount);
-            ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-                tokenIn: USDC, tokenOut: WETH, fee: 3000, recipient: address(this), deadline: block.timestamp, amountIn: borrowAmount, amountOutMinimum: 0, sqrtPriceLimitX96: 0
-            });
-            uint256 wethReceived = ISwapRouter(UNISWAP_ROUTER).exactInputSingle(params);
+            ISwapRouter.ExactInputSingleParams memory params = ISwapRouter
+                .ExactInputSingleParams({
+                    tokenIn: USDC,
+                    tokenOut: WETH,
+                    fee: 3000,
+                    recipient: address(this),
+                    deadline: block.timestamp,
+                    amountIn: borrowAmount,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                });
+            uint256 wethReceived = ISwapRouter(UNISWAP_ROUTER).exactInputSingle(
+                params
+            );
             IERC20(WETH).approve(AAVE_POOL, wethReceived);
             IPool(AAVE_POOL).supply(WETH, wethReceived, address(this), 0);
             iterations++;
@@ -60,12 +109,17 @@ contract OriginLooper {
 
     // Allow the Reactive Sender (ReactiveLooper or System Contract) to call this.
     modifier onlyReactive() {
-        require(msg.sender == reactiveSender || msg.sender == address(this), "Unauthorized");
+        require(
+            msg.sender == reactiveSender || msg.sender == address(this),
+            "Unauthorized"
+        );
         _;
     }
 
     function getLTV() internal view returns (uint256) {
-        ( , , , , uint256 ltv, ) = IPool(AAVE_POOL).getUserAccountData(address(this));
+        (, , , , uint256 ltv, ) = IPool(AAVE_POOL).getUserAccountData(
+            address(this)
+        );
         return ltv;
     }
 }
