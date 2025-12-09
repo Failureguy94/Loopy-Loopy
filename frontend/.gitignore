@@ -11,7 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
-
+# 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=
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
