@@ -15,25 +15,31 @@
         rel="stylesheet">
 
     <!-- Ethers.js from CDN -->
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="text/javascript"></script>
 
     <style>
         :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
-            --bg-card: rgba(18, 18, 26, 0.8);
-            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
-            --gradient-secondary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --bg-primary: #000000;
+            --bg-secondary: #020308;
+            --bg-card: rgba(3, 5, 12, 0.95);
+            --blue-primary: #1e3a8a;
+            --blue-secondary: #2563eb;
+            --blue-dark: #1e293b;
+            --blue-accent: #3b82f6;
+            --gradient-primary: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%);
+            --gradient-secondary: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            --gradient-accent: linear-gradient(90deg, #0f172a, #1e3a8a, #2563eb);
             --text-primary: #ffffff;
-            --text-secondary: #a1a1aa;
-            --text-muted: #71717a;
-            --border-color: rgba(139, 92, 246, 0.2);
-            --border-hover: rgba(139, 92, 246, 0.4);
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: rgba(30, 58, 138, 0.3);
+            --border-hover: rgba(37, 99, 235, 0.5);
             --success: #10b981;
             --warning: #f59e0b;
             --error: #ef4444;
-            --info: #06b6d4;
-            --shadow-glow: 0 0 60px rgba(139, 92, 246, 0.3);
+            --info: #2563eb;
+            --shadow-glow: 0 0 80px rgba(30, 58, 138, 0.4);
+            --shadow-blue: 0 0 40px rgba(30, 58, 138, 0.3);
             --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
         }
@@ -60,8 +66,9 @@
             width: 200%;
             height: 200%;
             background:
-                radial-gradient(ellipse at 20% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 70%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
+                radial-gradient(ellipse at 20% 30%, rgba(30, 58, 138, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(15, 23, 42, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
             animation: bgShift 20s ease-in-out infinite;
             z-index: -1;
         }
@@ -134,7 +141,7 @@
 
         .btn:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
+            box-shadow: 0 10px 40px rgba(30, 58, 138, 0.5);
         }
 
         .btn:disabled {
@@ -221,7 +228,7 @@
             width: 100%;
             padding: 1rem 1.25rem;
             padding-right: 4rem;
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0, 0, 0, 0.7);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             color: var(--text-primary);
@@ -231,8 +238,8 @@
         }
 
         .input-field:focus {
-            border-color: #8b5cf6;
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
 
         .input-suffix {
@@ -252,7 +259,7 @@
         }
 
         .stat-item {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.6);
             border-radius: 12px;
             padding: 1rem;
             border: 1px solid var(--border-color);
@@ -269,7 +276,7 @@
         .stat-value {
             font-size: 1.5rem;
             font-weight: 700;
-            background: linear-gradient(90deg, #06b6d4, #8b5cf6, #ec4899);
+            background: var(--gradient-accent);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -290,7 +297,7 @@
         }
 
         .logs-panel {
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0, 0, 0, 0.7);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 1rem;
@@ -381,7 +388,7 @@
 
         .progress-bar {
             height: 8px;
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0, 0, 0, 0.7);
             border-radius: 4px;
             overflow: hidden;
         }
@@ -562,165 +569,178 @@
     </div>
 
     <script>
-        // Contract configuration
-        const LOOPER_VAULT_ADDRESS = "0x10bA2B80361C686340ec09A04ee0BA4893531B9E";
-        const LOOPER_VAULT_ABI = [
-            "function deposit() external payable",
-            "function requestUnwind() external",
-            "function targetLTV() external view returns (uint256)",
-            "function getCurrentLTV() external view returns (uint256)",
-            "function getHealthFactor() external view returns (uint256)"
-        ];
-
-        let provider, signer, contract, account;
-
-        // DOM elements
-        const connectBtn = document.getElementById('connectBtn');
-        const depositBtn = document.getElementById('depositBtn');
-        const unwindBtn = document.getElementById('unwindBtn');
-        const depositAmountInput = document.getElementById('depositAmount');
-        const logsPanel = document.getElementById('logsPanel');
-        const currentLTVEl = document.getElementById('currentLTV');
-        const healthFactorEl = document.getElementById('healthFactor');
-        const statusBadge = document.getElementById('statusBadge');
-        const statusText = document.getElementById('statusText');
-        const loopProgress = document.getElementById('loopProgress');
-        const loopProgressBar = document.getElementById('loopProgressBar');
-
-        // Add log
-        function addLog(msg, type = 'info') {
-            const time = new Date().toLocaleTimeString();
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.innerHTML = `
-                <span class="log-time">${time}</span>
-                <span class="log-message ${type}">${msg}</span>
-            `;
-            if (logsPanel.children[0]?.textContent.includes('Connect wallet')) {
-                logsPanel.innerHTML = '';
-            }
-            logsPanel.insertBefore(entry, logsPanel.firstChild);
-        }
-
-        // Connect wallet
-        connectBtn.addEventListener('click', async () => {
-            if (!window.ethereum) {
-                addLog('Please install MetaMask!', 'error');
+        // Wait for ethers.js to load
+        window.addEventListener('load', function () {
+            // Check if ethers is available
+            if (typeof ethers === 'undefined') {
+                console.error('Ethers.js failed to load');
+                alert('Error: Ethers.js library failed to load. Please check your internet connection and refresh the page.');
                 return;
             }
 
-            try {
-                addLog('Connecting wallet...', 'info');
+            // Contract configuration
+            const LOOPER_VAULT_ADDRESS = "0x10bA2B80361C686340ec09A04ee0BA4893531B9E";
+            const LOOPER_VAULT_ABI = [
+                "function deposit() external payable",
+                "function requestUnwind() external",
+                "function targetLTV() external view returns (uint256)",
+                "function getCurrentLTV() external view returns (uint256)",
+                "function getHealthFactor() external view returns (uint256)"
+            ];
 
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+            let provider, signer, contract, account;
 
-                if (chainId !== '0xaa36a7') {
-                    addLog('Switching to Sepolia...', 'warning');
-                    try {
-                        await window.ethereum.request({
-                            method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: '0xaa36a7' }],
-                        });
-                    } catch (e) {
-                        addLog('Please switch to Sepolia manually', 'error');
-                        return;
-                    }
+            // DOM elements
+            const connectBtn = document.getElementById('connectBtn');
+            const depositBtn = document.getElementById('depositBtn');
+            const unwindBtn = document.getElementById('unwindBtn');
+            const depositAmountInput = document.getElementById('depositAmount');
+            const logsPanel = document.getElementById('logsPanel');
+            const currentLTVEl = document.getElementById('currentLTV');
+            const healthFactorEl = document.getElementById('healthFactor');
+            const statusBadge = document.getElementById('statusBadge');
+            const statusText = document.getElementById('statusText');
+            const loopProgress = document.getElementById('loopProgress');
+            const loopProgressBar = document.getElementById('loopProgressBar');
+
+            // Add log
+            function addLog(msg, type = 'info') {
+                const time = new Date().toLocaleTimeString();
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.innerHTML = `
+                    <span class="log-time">${time}</span>
+                    <span class="log-message ${type}">${msg}</span>
+                `;
+                if (logsPanel.children[0]?.textContent.includes('Connect wallet')) {
+                    logsPanel.innerHTML = '';
+                }
+                logsPanel.insertBefore(entry, logsPanel.firstChild);
+            }
+
+            // Connect wallet
+            connectBtn.addEventListener('click', async () => {
+                if (!window.ethereum) {
+                    addLog('Please install MetaMask!', 'error');
+                    return;
                 }
 
-                provider = new ethers.providers.Web3Provider(window.ethereum);
-                signer = provider.getSigner();
-                contract = new ethers.Contract(LOOPER_VAULT_ADDRESS, LOOPER_VAULT_ABI, signer);
-                account = accounts[0];
+                try {
+                    addLog('Connecting wallet...', 'info');
 
-                connectBtn.textContent = `${account.slice(0, 6)}...${account.slice(-4)}`;
-                connectBtn.style.background = 'transparent';
-                connectBtn.style.border = '1px solid var(--border-color)';
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
 
-                depositBtn.disabled = false;
-                unwindBtn.disabled = false;
+                    if (chainId !== '0xaa36a7') {
+                        addLog('Switching to Sepolia...', 'warning');
+                        try {
+                            await window.ethereum.request({
+                                method: 'wallet_switchEthereumChain',
+                                params: [{ chainId: '0xaa36a7' }],
+                            });
+                        } catch (e) {
+                            addLog('Please switch to Sepolia manually', 'error');
+                            return;
+                        }
+                    }
 
-                statusBadge.className = 'status-badge active';
-                statusText.textContent = 'Ready';
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    contract = new ethers.Contract(LOOPER_VAULT_ADDRESS, LOOPER_VAULT_ABI, signer);
+                    account = accounts[0];
 
-                addLog(`Connected: ${account.slice(0, 6)}...${account.slice(-4)}`, 'success');
+                    connectBtn.textContent = `${account.slice(0, 6)}...${account.slice(-4)}`;
+                    connectBtn.style.background = 'transparent';
+                    connectBtn.style.border = '1px solid var(--border-color)';
 
-                loadStats();
-            } catch (error) {
-                addLog(`Connection failed: ${error.message}`, 'error');
+                    depositBtn.disabled = false;
+                    unwindBtn.disabled = false;
+
+                    statusBadge.className = 'status-badge active';
+                    statusText.textContent = 'Ready';
+
+                    addLog(`Connected: ${account.slice(0, 6)}...${account.slice(-4)}`, 'success');
+
+                    loadStats();
+                } catch (error) {
+                    addLog(`Connection failed: ${error.message}`, 'error');
+                }
+            });
+
+            // Load stats
+            async function loadStats() {
+                if (!contract) return;
+
+                try {
+                    const [targetLTV, currentLTV, healthFactor] = await Promise.all([
+                        contract.targetLTV(),
+                        contract.getCurrentLTV(),
+                        contract.getHealthFactor()
+                    ]);
+
+                    currentLTVEl.textContent = (currentLTV.toNumber() / 100).toFixed(2) + '%';
+
+                    const hf = healthFactor.toNumber() / 1e18;
+                    healthFactorEl.textContent = hf > 100 ? '∞' : hf.toFixed(2);
+                    healthFactorEl.className = `stat-value ${hf >= 1.5 ? 'success' : hf >= 1.2 ? 'warning' : 'error'}`;
+
+                    const progress = Math.min(100, Math.round((currentLTV.toNumber() / targetLTV.toNumber()) * 100));
+                    loopProgress.textContent = progress + '%';
+                    loopProgressBar.style.width = progress + '%';
+                } catch (error) {
+                    console.error('Failed to load stats:', error);
+                }
             }
+
+            // Deposit
+            depositBtn.addEventListener('click', async () => {
+                if (!contract) return;
+
+                try {
+                    depositBtn.disabled = true;
+                    depositBtn.textContent = '⏳ Processing...';
+
+                    const amount = ethers.utils.parseEther(depositAmountInput.value);
+                    addLog(`Depositing ${depositAmountInput.value} ETH...`, 'info');
+
+                    const tx = await contract.deposit({ value: amount });
+                    addLog(`Transaction sent: ${tx.hash.slice(0, 10)}...`, 'info');
+
+                    await tx.wait();
+                    addLog('✅ Deposit confirmed! Looping started.', 'success');
+
+                    setTimeout(loadStats, 2000);
+                } catch (error) {
+                    addLog(`❌ Error: ${error.message}`, 'error');
+                } finally {
+                    depositBtn.disabled = false;
+                    depositBtn.textContent = '🚀 Start Leverage Loop';
+                }
+            });
+
+            // Unwind
+            unwindBtn.addEventListener('click', async () => {
+                if (!contract) return;
+
+                try {
+                    addLog('Requesting position unwind...', 'warning');
+                    const tx = await contract.requestUnwind();
+                    addLog(`Unwind request sent: ${tx.hash.slice(0, 10)}...`, 'info');
+                    await tx.wait();
+                    addLog('✅ Unwind requested!', 'success');
+                } catch (error) {
+                    addLog(`❌ Unwind error: ${error.message}`, 'error');
+                }
+            });
+
+            // Refresh stats periodically
+            setInterval(() => {
+                if (contract) loadStats();
+            }, 10000);
+
+            // Show ready message
+            console.log('✅ Reactive Looper loaded successfully!');
         });
-
-        // Load stats
-        async function loadStats() {
-            if (!contract) return;
-
-            try {
-                const [targetLTV, currentLTV, healthFactor] = await Promise.all([
-                    contract.targetLTV(),
-                    contract.getCurrentLTV(),
-                    contract.getHealthFactor()
-                ]);
-
-                currentLTVEl.textContent = (currentLTV.toNumber() / 100).toFixed(2) + '%';
-
-                const hf = healthFactor.toNumber() / 1e18;
-                healthFactorEl.textContent = hf > 100 ? '∞' : hf.toFixed(2);
-                healthFactorEl.className = `stat-value ${hf >= 1.5 ? 'success' : hf >= 1.2 ? 'warning' : 'error'}`;
-
-                const progress = Math.min(100, Math.round((currentLTV.toNumber() / targetLTV.toNumber()) * 100));
-                loopProgress.textContent = progress + '%';
-                loopProgressBar.style.width = progress + '%';
-            } catch (error) {
-                console.error('Failed to load stats:', error);
-            }
-        }
-
-        // Deposit
-        depositBtn.addEventListener('click', async () => {
-            if (!contract) return;
-
-            try {
-                depositBtn.disabled = true;
-                depositBtn.textContent = '⏳ Processing...';
-
-                const amount = ethers.utils.parseEther(depositAmountInput.value);
-                addLog(`Depositing ${depositAmountInput.value} ETH...`, 'info');
-
-                const tx = await contract.deposit({ value: amount });
-                addLog(`Transaction sent: ${tx.hash.slice(0, 10)}...`, 'info');
-
-                await tx.wait();
-                addLog('✅ Deposit confirmed! Looping started.', 'success');
-
-                setTimeout(loadStats, 2000);
-            } catch (error) {
-                addLog(`❌ Error: ${error.message}`, 'error');
-            } finally {
-                depositBtn.disabled = false;
-                depositBtn.textContent = '🚀 Start Leverage Loop';
-            }
-        });
-
-        // Unwind
-        unwindBtn.addEventListener('click', async () => {
-            if (!contract) return;
-
-            try {
-                addLog('Requesting position unwind...', 'warning');
-                const tx = await contract.requestUnwind();
-                addLog(`Unwind request sent: ${tx.hash.slice(0, 10)}...`, 'info');
-                await tx.wait();
-                addLog('✅ Unwind requested!', 'success');
-            } catch (error) {
-                addLog(`❌ Unwind error: ${error.message}`, 'error');
-            }
-        });
-
-        // Refresh stats periodically
-        setInterval(() => {
-            if (contract) loadStats();
-        }, 10000);
     </script>
 </body>
 
