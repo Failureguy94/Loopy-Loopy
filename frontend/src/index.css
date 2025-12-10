@@ -2,7 +2,7 @@
   Reactive Looper - Dark theme inspired by Reactive Network
   Colors: Dark backgrounds, purple/blue/cyan gradients
 */
-
+@import "tailwindcss";
 :root {
   /* Base colors */
   --bg-primary: #0a0a0f;
