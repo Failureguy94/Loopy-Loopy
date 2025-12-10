@@ -1,5 +1,3 @@
-import { createThirdwebClient } from "thirdweb";
-
-export const client = createThirdwebClient({
-    clientId: "YOUR_CLIENT_ID",
-});
+// This file is no longer needed since we're using ethers.js directly
+// Kept for backwards compatibility but exports nothing
+export const client = null;

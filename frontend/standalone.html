@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Reactive Looper - Automated Leveraged Looping Strategy">
+    <title>Reactive Looper | Automated DeFi Leverage</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Ethers.js from CDN -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(18, 18, 26, 0.8);
+            --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+            --gradient-secondary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --border-color: rgba(139, 92, 246, 0.2);
+            --border-hover: rgba(139, 92, 246, 0.4);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #06b6d4;
+            --shadow-glow: 0 0 60px rgba(139, 92, 246, 0.3);
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(ellipse at 20% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
+            animation: bgShift 20s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes bgShift {
+
+            0%,
+            100% {
+                transform: translate(0, 0);
+            }
+
+            50% {
+                transform: translate(-5%, 5%);
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--gradient-primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--gradient-primary);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--error);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-secondary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            padding-right: 4rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            font-weight: 600;
+            outline: none;
+        }
+
+        .input-field:focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+        }
+
+        .input-suffix {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #06b6d4, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-value.success {
+            color: var(--success);
+            -webkit-text-fill-color: var(--success);
+        }
+
+        .stat-value.warning {
+            color: var(--warning);
+            -webkit-text-fill-color: var(--warning);
+        }
+
+        .stat-value.error {
+            color: var(--error);
+            -webkit-text-fill-color: var(--error);
+        }
+
+        .logs-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .log-entry {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .log-message {
+            color: var(--info);
+        }
+
+        .log-message.success {
+            color: var(--success);
+        }
+
+        .log-message.error {
+            color: var(--error);
+        }
+
+        .log-message.warning {
+            color: var(--warning);
+        }
+
+        .feature-list {
+            list-style: none;
+            margin-top: 1rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--gradient-secondary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
+        .feature-text {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .progress-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .progress-value {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-primary);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-badge.active {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+        }
+
+        .status-badge.inactive {
+            background: rgba(113, 113, 122, 0.2);
+            border: 1px solid rgba(113, 113, 122, 0.3);
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">🔄</div>
+                <span class="logo-text">Reactive Looper</span>
+            </div>
+            <button id="connectBtn" class="btn">Connect Wallet</button>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">⚡</div>
+                    <h2 class="card-title">Leverage Loop</h2>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                    Deposit ETH to automatically create a leveraged position on Aave.
+                    The Reactive Network orchestrates multi-step supply/borrow/swap loops.
+                </p>
+
+                <div class="input-group">
+                    <label class="input-label">Deposit Amount</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="depositAmount" class="input-field" value="0.05" min="0.01" step="0.01">
+                        <span class="input-suffix">ETH</span>
+                    </div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-header">
+                        <span class="progress-label">Target LTV</span>
+                        <span class="progress-value" id="targetLTV">75.00%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 75%"></div>
+                    </div>
+                </div>
+
+                <button id="depositBtn" class="btn" style="width: 100%; margin-bottom: 1.5rem;" disabled>
+                    🚀 Start Leverage Loop
+                </button>
+
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span class="feature-text">Automated multi-step looping</span>
+                    </li>
+                    <li class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span class="feature-text">Dynamic termination (no fixed iterations)</span>
+                    </li>
+                    <li class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span class="feature-text">Slippage protection (max 1%)</span>
+                    </li>
+                    <li class="feature-item">
+                        <span class="feature-icon">✓</span>
+                        <span class="feature-text">Health factor monitoring (min 1.5)</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <h2 class="card-title">Position Status</h2>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Current LTV</div>
+                        <div class="stat-value" id="currentLTV">0.00%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Target LTV</div>
+                        <div class="stat-value">75.00%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Health Factor</div>
+                        <div class="stat-value success" id="healthFactor">∞</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Status</div>
+                        <div class="status-badge inactive" id="statusBadge">
+                            <span class="status-dot"></span>
+                            <span id="statusText">Disconnected</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-header">
+                        <span class="progress-label">Loop Progress</span>
+                        <span class="progress-value" id="loopProgress">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="loopProgressBar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <button id="unwindBtn" class="btn btn-danger" style="width: 100%;" disabled>
+                    🔓 Safe Unwind Position
+                </button>
+
+                <div style="margin-top: 1.5rem;">
+                    <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                        Activity Log
+                    </h3>
+                    <div class="logs-panel" id="logsPanel">
+                        <div style="color: var(--text-muted); padding: 1rem; text-align: center;">
+                            Connect wallet to get started...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Contract configuration
+        const LOOPER_VAULT_ADDRESS = "0x10bA2B80361C686340ec09A04ee0BA4893531B9E";
+        const LOOPER_VAULT_ABI = [
+            "function deposit() external payable",
+            "function requestUnwind() external",
+            "function targetLTV() external view returns (uint256)",
+            "function getCurrentLTV() external view returns (uint256)",
+            "function getHealthFactor() external view returns (uint256)"
+        ];
+
+        let provider, signer, contract, account;
+
+        // DOM elements
+        const connectBtn = document.getElementById('connectBtn');
+        const depositBtn = document.getElementById('depositBtn');
+        const unwindBtn = document.getElementById('unwindBtn');
+        const depositAmountInput = document.getElementById('depositAmount');
+        const logsPanel = document.getElementById('logsPanel');
+        const currentLTVEl = document.getElementById('currentLTV');
+        const healthFactorEl = document.getElementById('healthFactor');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const loopProgress = document.getElementById('loopProgress');
+        const loopProgressBar = document.getElementById('loopProgressBar');
+
+        // Add log
+        function addLog(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="log-time">${time}</span>
+                <span class="log-message ${type}">${msg}</span>
+            `;
+            if (logsPanel.children[0]?.textContent.includes('Connect wallet')) {
+                logsPanel.innerHTML = '';
+            }
+            logsPanel.insertBefore(entry, logsPanel.firstChild);
+        }
+
+        // Connect wallet
+        connectBtn.addEventListener('click', async () => {
+            if (!window.ethereum) {
+                addLog('Please install MetaMask!', 'error');
+                return;
+            }
+
+            try {
+                addLog('Connecting wallet...', 'info');
+
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+
+                if (chainId !== '0xaa36a7') {
+                    addLog('Switching to Sepolia...', 'warning');
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0xaa36a7' }],
+                        });
+                    } catch (e) {
+                        addLog('Please switch to Sepolia manually', 'error');
+                        return;
+                    }
+                }
+
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                contract = new ethers.Contract(LOOPER_VAULT_ADDRESS, LOOPER_VAULT_ABI, signer);
+                account = accounts[0];
+
+                connectBtn.textContent = `${account.slice(0, 6)}...${account.slice(-4)}`;
+                connectBtn.style.background = 'transparent';
+                connectBtn.style.border = '1px solid var(--border-color)';
+
+                depositBtn.disabled = false;
+                unwindBtn.disabled = false;
+
+                statusBadge.className = 'status-badge active';
+                statusText.textContent = 'Ready';
+
+                addLog(`Connected: ${account.slice(0, 6)}...${account.slice(-4)}`, 'success');
+
+                loadStats();
+            } catch (error) {
+                addLog(`Connection failed: ${error.message}`, 'error');
+            }
+        });
+
+        // Load stats
+        async function loadStats() {
+            if (!contract) return;
+
+            try {
+                const [targetLTV, currentLTV, healthFactor] = await Promise.all([
+                    contract.targetLTV(),
+                    contract.getCurrentLTV(),
+                    contract.getHealthFactor()
+                ]);
+
+                currentLTVEl.textContent = (currentLTV.toNumber() / 100).toFixed(2) + '%';
+
+                const hf = healthFactor.toNumber() / 1e18;
+                healthFactorEl.textContent = hf > 100 ? '∞' : hf.toFixed(2);
+                healthFactorEl.className = `stat-value ${hf >= 1.5 ? 'success' : hf >= 1.2 ? 'warning' : 'error'}`;
+
+                const progress = Math.min(100, Math.round((currentLTV.toNumber() / targetLTV.toNumber()) * 100));
+                loopProgress.textContent = progress + '%';
+                loopProgressBar.style.width = progress + '%';
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        // Deposit
+        depositBtn.addEventListener('click', async () => {
+            if (!contract) return;
+
+            try {
+                depositBtn.disabled = true;
+                depositBtn.textContent = '⏳ Processing...';
+
+                const amount = ethers.utils.parseEther(depositAmountInput.value);
+                addLog(`Depositing ${depositAmountInput.value} ETH...`, 'info');
+
+                const tx = await contract.deposit({ value: amount });
+                addLog(`Transaction sent: ${tx.hash.slice(0, 10)}...`, 'info');
+
+                await tx.wait();
+                addLog('✅ Deposit confirmed! Looping started.', 'success');
+
+                setTimeout(loadStats, 2000);
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                depositBtn.disabled = false;
+                depositBtn.textContent = '🚀 Start Leverage Loop';
+            }
+        });
+
+        // Unwind
+        unwindBtn.addEventListener('click', async () => {
+            if (!contract) return;
+
+            try {
+                addLog('Requesting position unwind...', 'warning');
+                const tx = await contract.requestUnwind();
+                addLog(`Unwind request sent: ${tx.hash.slice(0, 10)}...`, 'info');
+                await tx.wait();
+                addLog('✅ Unwind requested!', 'success');
+            } catch (error) {
+                addLog(`❌ Unwind error: ${error.message}`, 'error');
+            }
+        });
+
+        // Refresh stats periodically
+        setInterval(() => {
+            if (contract) loadStats();
+        }, 10000);
+    </script>
+</body>
+
+</html>
