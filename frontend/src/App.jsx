@@ -13,6 +13,7 @@ function App() {
   const [signer, setSigner] = useState(null);
   const [contract, setContract] = useState(null);
   const [chainId, setChainId] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected'); // disconnected, connecting, connected, error
 
   // Form state
   const [depositAmount, setDepositAmount] = useState('0.05');
@@ -78,12 +79,14 @@ function App() {
   const connectWallet = async () => {
     if (!isMetaMaskInstalled()) {
       addLog('Please install MetaMask!', 'error');
+      setConnectionStatus('error');
       window.open('https://metamask.io/download/', '_blank');
       return;
     }
 
     try {
       setIsLoading(true);
+      setConnectionStatus('connecting');
       addLog('Connecting to MetaMask...', 'info');
 
       // Request accounts
@@ -122,15 +125,21 @@ function App() {
       setSigner(userSigner);
       setContract(looperContract);
       setAccount(accounts[0]);
+      setConnectionStatus('connected');
 
       addLog(`Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`, 'success');
+      addLog(`Contract: ${LOOPER_VAULT_ADDRESS}`, 'info');
 
       // Load contract data
       await loadContractData(looperContract);
 
     } catch (error) {
       console.error('Connection error:', error);
+      setConnectionStatus('error');
       addLog(`Connection failed: ${error.message}`, 'error');
+      if (error.code) {
+        addLog(`Error code: ${error.code}`, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -139,13 +148,19 @@ function App() {
   // Load contract data
   const loadContractData = async (contractInstance) => {
     const c = contractInstance || contract;
-    if (!c) return;
+    if (!c) {
+      addLog('No contract instance available', 'warning');
+      return;
+    }
 
     try {
+      addLog('Loading contract data...', 'info');
+
       // Get target LTV
       const target = await c.targetLTV();
       const targetValue = Number(target) / 100;
       setTargetLTV(targetValue.toFixed(2));
+      addLog(`Target LTV: ${targetValue.toFixed(2)}%`, 'success');
 
       // Try to get current LTV (might fail if no position)
       try {
@@ -174,6 +189,10 @@ function App() {
 
     } catch (error) {
       console.error('Failed to load contract data:', error);
+      addLog(`Failed to load contract data: ${error.message}`, 'error');
+      if (error.code === 'CALL_EXCEPTION') {
+        addLog('Contract may not be deployed or ABI mismatch', 'error');
+      }
     }
   };
 
@@ -184,18 +203,40 @@ function App() {
       return;
     }
 
+    // Validate deposit amount
+    if (!depositAmount || parseFloat(depositAmount) < 0.01) {
+      addLog('Minimum deposit is 0.01 ETH', 'error');
+      return;
+    }
+
     try {
       setIsLoading(true);
       const amount = ethers.parseEther(depositAmount);
 
-      addLog(`Depositing ${depositAmount} ETH...`, 'info');
+      addLog(`Preparing deposit of ${depositAmount} ETH...`, 'info');
+      addLog(`Contract address: ${LOOPER_VAULT_ADDRESS}`, 'info');
 
+      // Check balance
+      const balance = await provider.getBalance(account);
+      const balanceEth = ethers.formatEther(balance);
+      addLog(`Your balance: ${parseFloat(balanceEth).toFixed(4)} ETH`, 'info');
+
+      if (balance < amount) {
+        addLog('Insufficient balance', 'error');
+        setIsLoading(false);
+        return;
+      }
+
+      addLog('Sending transaction...', 'info');
       const tx = await contract.deposit({ value: amount });
-      addLog(`Transaction sent: ${tx.hash.slice(0, 10)}...`, 'info');
+      addLog(`✅ Transaction sent: ${tx.hash}`, 'success');
+      addLog(`View on Etherscan: https://sepolia.etherscan.io/tx/${tx.hash}`, 'info');
 
+      addLog('Waiting for confirmation...', 'info');
       const receipt = await tx.wait();
       addLog('✅ Deposit confirmed! Looping started.', 'success');
       addLog(`Block: ${receipt.blockNumber}`, 'info');
+      addLog(`Gas used: ${receipt.gasUsed.toString()}`, 'info');
 
       // Refresh data after a delay
       setTimeout(() => loadContractData(), 3000);
@@ -203,6 +244,20 @@ function App() {
     } catch (error) {
       console.error('Deposit error:', error);
       addLog(`❌ Deposit failed: ${error.reason || error.message}`, 'error');
+
+      // Provide more detailed error info
+      if (error.code === 'ACTION_REJECTED') {
+        addLog('Transaction was rejected by user', 'warning');
+      } else if (error.code === 'INSUFFICIENT_FUNDS') {
+        addLog('Insufficient funds for transaction', 'error');
+      } else if (error.code) {
+        addLog(`Error code: ${error.code}`, 'error');
+      }
+
+      // Log error data if available
+      if (error.data) {
+        console.error('Error data:', error.data);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -218,10 +273,13 @@ function App() {
     try {
       setIsLoading(true);
       addLog('Requesting position unwind...', 'warning');
+      addLog('This will safely close your leveraged position', 'info');
 
       const tx = await contract.requestUnwind();
-      addLog(`Unwind request sent: ${tx.hash.slice(0, 10)}...`, 'info');
+      addLog(`✅ Unwind request sent: ${tx.hash}`, 'success');
+      addLog(`View on Etherscan: https://sepolia.etherscan.io/tx/${tx.hash}`, 'info');
 
+      addLog('Waiting for confirmation...', 'info');
       await tx.wait();
       addLog('✅ Unwind requested successfully!', 'success');
 
@@ -230,6 +288,16 @@ function App() {
     } catch (error) {
       console.error('Unwind error:', error);
       addLog(`❌ Unwind failed: ${error.reason || error.message}`, 'error');
+
+      // Check for specific error codes
+      if (error.data === '0x33cbf2bc') {
+        addLog('⚠️ No active position found. You need to deposit first!', 'warning');
+        addLog('Click "Start Leverage Loop" to create a position', 'info');
+      } else if (error.code === 'ACTION_REJECTED') {
+        addLog('Transaction was rejected by user', 'warning');
+      } else if (error.code) {
+        addLog(`Error code: ${error.code}`, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -292,6 +360,16 @@ function App() {
         <div className="logo">
           <div className="logo-icon">🔄</div>
           <span className="logo-text">Reactive Looper</span>
+          {connectionStatus === 'connected' && (
+            <span style={{ marginLeft: '10px', fontSize: '12px', color: '#4ade80' }}>
+              • Connected
+            </span>
+          )}
+          {connectionStatus === 'connecting' && (
+            <span style={{ marginLeft: '10px', fontSize: '12px', color: '#fbbf24' }}>
+              • Connecting...
+            </span>
+          )}
         </div>
 
         {account ? (
