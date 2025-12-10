@@ -1,349 +1,428 @@
 import { useState, useEffect, useCallback } from 'react';
-import { LOOPER_VAULT_ADDRESS, LOOPER_VAULT_ABI } from "./constants";
-import './index.css';
+import { ethers } from 'ethers';
+import { LOOPER_VAULT_ADDRESS, LOOPER_VAULT_ABI } from './constants';
+import './App.css';
+
+// Sepolia Chain ID
+const SEPOLIA_CHAIN_ID = '0xaa36a7'; // 11155111 in hex
 
 function App() {
+  // State
   const [account, setAccount] = useState(null);
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   const [contract, setContract] = useState(null);
-  const [depositAmount, setDepositAmount] = useState('0.05');
-  const [logs, setLogs] = useState([]);
-  const [isLooping, setIsLooping] = useState(false);
-  const [stats, setStats] = useState({
-    targetLTV: 7500n,
-    currentLTV: 0n,
-    healthFactor: 0n,
-  });
+  const [chainId, setChainId] = useState(null);
 
-  const addLog = (msg, type = 'info') => {
-    const time = new Date().toLocaleTimeString();
-    setLogs(prev => [{ time, msg, type }, ...prev].slice(0, 50));
+  // Form state
+  const [depositAmount, setDepositAmount] = useState('0.05');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Contract data
+  const [targetLTV, setTargetLTV] = useState('75.00');
+  const [currentLTV, setCurrentLTV] = useState('0.00');
+  const [healthFactor, setHealthFactor] = useState('∞');
+  const [loopProgress, setLoopProgress] = useState(0);
+
+  // Logs
+  const [logs, setLogs] = useState([]);
+
+  // Add log entry
+  const addLog = useCallback((message, type = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    setLogs(prev => [{ timestamp, message, type }, ...prev].slice(0, 50));
+    console.log(`[${type}] ${message}`);
+  }, []);
+
+  // Check if MetaMask is installed
+  const isMetaMaskInstalled = () => {
+    return typeof window.ethereum !== 'undefined' && window.ethereum.isMetaMask;
+  };
+
+  // Switch to Sepolia network
+  const switchToSepolia = async () => {
+    if (!window.ethereum) return false;
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: SEPOLIA_CHAIN_ID }],
+      });
+      return true;
+    } catch (switchError) {
+      // Chain not added, try to add it
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: SEPOLIA_CHAIN_ID,
+              chainName: 'Sepolia Testnet',
+              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+              rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+              blockExplorerUrls: ['https://sepolia.etherscan.io'],
+            }],
+          });
+          return true;
+        } catch (addError) {
+          addLog('Failed to add Sepolia network', 'error');
+          return false;
+        }
+      }
+      addLog('Failed to switch to Sepolia', 'error');
+      return false;
+    }
   };
 
   // Connect wallet
   const connectWallet = async () => {
-    if (!window.ethereum) {
-      addLog("Please install MetaMask!", "error");
+    if (!isMetaMaskInstalled()) {
+      addLog('Please install MetaMask!', 'error');
+      window.open('https://metamask.io/download/', '_blank');
       return;
     }
 
     try {
-      addLog("Connecting wallet...", "info");
-      const { ethers } = await import('ethers');
+      setIsLoading(true);
+      addLog('Connecting to MetaMask...', 'info');
 
       // Request accounts
       const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts'
+        method: 'eth_requestAccounts',
       });
 
-      // Check network (Sepolia = 11155111)
-      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== '0xaa36a7') {
-        addLog("Switching to Sepolia...", "warning");
-        try {
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0xaa36a7' }],
-          });
-        } catch (switchError) {
-          addLog("Please switch to Sepolia network manually", "error");
-          return;
-        }
+      if (!accounts || accounts.length === 0) {
+        addLog('No accounts found', 'error');
+        return;
       }
 
+      // Check chain
+      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+      setChainId(currentChainId);
+
+      if (currentChainId !== SEPOLIA_CHAIN_ID) {
+        addLog('Switching to Sepolia testnet...', 'warning');
+        const switched = await switchToSepolia();
+        if (!switched) return;
+      }
+
+      // Setup ethers
       const browserProvider = new ethers.BrowserProvider(window.ethereum);
       const userSigner = await browserProvider.getSigner();
+
+      // Setup contract
       const looperContract = new ethers.Contract(
         LOOPER_VAULT_ADDRESS,
         LOOPER_VAULT_ABI,
         userSigner
       );
 
+      // Update state
       setProvider(browserProvider);
       setSigner(userSigner);
       setContract(looperContract);
       setAccount(accounts[0]);
 
-      addLog(`Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`, "success");
+      addLog(`Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`, 'success');
 
-      // Load initial stats
-      loadStats(looperContract);
+      // Load contract data
+      await loadContractData(looperContract);
+
     } catch (error) {
-      addLog(`Connection failed: ${error.message}`, "error");
+      console.error('Connection error:', error);
+      addLog(`Connection failed: ${error.message}`, 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Load contract stats
-  const loadStats = async (contractInstance) => {
+  // Load contract data
+  const loadContractData = async (contractInstance) => {
     const c = contractInstance || contract;
     if (!c) return;
 
     try {
-      const [targetLTV, currentLTV, healthFactor] = await Promise.all([
-        c.targetLTV(),
-        c.getCurrentLTV(),
-        c.getHealthFactor(),
-      ]);
-      setStats({ targetLTV, currentLTV, healthFactor });
+      // Get target LTV
+      const target = await c.targetLTV();
+      const targetValue = Number(target) / 100;
+      setTargetLTV(targetValue.toFixed(2));
+
+      // Try to get current LTV (might fail if no position)
+      try {
+        const current = await c.getCurrentLTV();
+        const currentValue = Number(current) / 100;
+        setCurrentLTV(currentValue.toFixed(2));
+
+        // Calculate progress
+        if (targetValue > 0) {
+          const progress = Math.min(100, (currentValue / targetValue) * 100);
+          setLoopProgress(progress);
+        }
+      } catch (e) {
+        setCurrentLTV('0.00');
+        setLoopProgress(0);
+      }
+
+      // Try to get health factor
+      try {
+        const hf = await c.getHealthFactor();
+        const hfValue = Number(hf) / 1e18;
+        setHealthFactor(hfValue > 100 ? '∞' : hfValue.toFixed(2));
+      } catch (e) {
+        setHealthFactor('∞');
+      }
+
     } catch (error) {
-      console.error("Failed to load stats:", error);
+      console.error('Failed to load contract data:', error);
     }
   };
 
-  // Deposit
+  // Deposit ETH
   const handleDeposit = async () => {
     if (!contract || !signer) {
-      addLog("Please connect wallet first", "error");
+      addLog('Please connect wallet first', 'error');
       return;
     }
 
     try {
-      setIsLooping(true);
-      const { ethers } = await import('ethers');
-      const amountWei = ethers.parseEther(depositAmount);
+      setIsLoading(true);
+      const amount = ethers.parseEther(depositAmount);
 
-      addLog(`Depositing ${depositAmount} ETH...`, "info");
+      addLog(`Depositing ${depositAmount} ETH...`, 'info');
 
-      const tx = await contract.deposit({ value: amountWei });
-      addLog(`Transaction sent: ${tx.hash.slice(0, 10)}...`, "info");
+      const tx = await contract.deposit({ value: amount });
+      addLog(`Transaction sent: ${tx.hash.slice(0, 10)}...`, 'info');
 
       const receipt = await tx.wait();
-      addLog("✅ Deposit confirmed! Looping started.", "success");
+      addLog('✅ Deposit confirmed! Looping started.', 'success');
+      addLog(`Block: ${receipt.blockNumber}`, 'info');
 
-      // Reload stats
-      setTimeout(() => loadStats(), 2000);
+      // Refresh data after a delay
+      setTimeout(() => loadContractData(), 3000);
+
     } catch (error) {
-      addLog(`❌ Error: ${error.message}`, "error");
+      console.error('Deposit error:', error);
+      addLog(`❌ Deposit failed: ${error.reason || error.message}`, 'error');
     } finally {
-      setIsLooping(false);
+      setIsLoading(false);
     }
   };
 
-  // Request Unwind
+  // Request unwind
   const handleUnwind = async () => {
-    if (!contract) return;
+    if (!contract) {
+      addLog('Please connect wallet first', 'error');
+      return;
+    }
 
     try {
-      addLog("Requesting position unwind...", "warning");
+      setIsLoading(true);
+      addLog('Requesting position unwind...', 'warning');
+
       const tx = await contract.requestUnwind();
-      addLog(`Unwind request sent: ${tx.hash.slice(0, 10)}...`, "info");
+      addLog(`Unwind request sent: ${tx.hash.slice(0, 10)}...`, 'info');
+
       await tx.wait();
-      addLog("✅ Unwind requested!", "success");
+      addLog('✅ Unwind requested successfully!', 'success');
+
+      setTimeout(() => loadContractData(), 3000);
+
     } catch (error) {
-      addLog(`❌ Unwind error: ${error.message}`, "error");
+      console.error('Unwind error:', error);
+      addLog(`❌ Unwind failed: ${error.reason || error.message}`, 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Format helpers
-  const formatLTV = (ltv) => {
-    if (!ltv) return '0.00%';
-    return (Number(ltv) / 100).toFixed(2) + '%';
-  };
-
-  const formatHealthFactor = (hf) => {
-    if (!hf) return '∞';
-    const value = Number(hf) / 1e18;
-    if (value > 100) return '∞';
-    return value.toFixed(2);
-  };
-
-  const getHealthFactorClass = (hf) => {
-    if (!hf) return 'success';
-    const value = Number(hf) / 1e18;
-    if (value >= 1.5) return 'success';
-    if (value >= 1.2) return 'warning';
-    return 'error';
-  };
-
-  // Listen for account changes
+  // Listen for account/chain changes
   useEffect(() => {
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) {
-          setAccount(null);
-          addLog("Wallet disconnected", "warning");
-        } else {
-          setAccount(accounts[0]);
-          addLog(`Account changed: ${accounts[0].slice(0, 6)}...`, "info");
-        }
-      });
-    }
-  }, []);
+    if (!window.ethereum) return;
 
-  // Refresh stats periodically
+    const handleAccountsChanged = (accounts) => {
+      if (accounts.length === 0) {
+        setAccount(null);
+        setContract(null);
+        addLog('Wallet disconnected', 'warning');
+      } else if (accounts[0] !== account) {
+        setAccount(accounts[0]);
+        addLog(`Account changed to ${accounts[0].slice(0, 6)}...`, 'info');
+        if (contract) loadContractData();
+      }
+    };
+
+    const handleChainChanged = (newChainId) => {
+      setChainId(newChainId);
+      if (newChainId !== SEPOLIA_CHAIN_ID) {
+        addLog('Please switch to Sepolia testnet', 'warning');
+      }
+      window.location.reload();
+    };
+
+    window.ethereum.on('accountsChanged', handleAccountsChanged);
+    window.ethereum.on('chainChanged', handleChainChanged);
+
+    return () => {
+      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      window.ethereum.removeListener('chainChanged', handleChainChanged);
+    };
+  }, [account, contract, addLog]);
+
+  // Auto-refresh data
   useEffect(() => {
     if (contract) {
-      const interval = setInterval(() => loadStats(), 10000);
+      const interval = setInterval(() => loadContractData(), 15000);
       return () => clearInterval(interval);
     }
   }, [contract]);
 
+  // Get health factor color class
+  const getHealthClass = () => {
+    if (healthFactor === '∞') return 'success';
+    const hf = parseFloat(healthFactor);
+    if (hf >= 1.5) return 'success';
+    if (hf >= 1.2) return 'warning';
+    return 'error';
+  };
+
   return (
-    <div className="app-container">
+    <div className="app">
       {/* Header */}
       <header className="header">
         <div className="logo">
           <div className="logo-icon">🔄</div>
           <span className="logo-text">Reactive Looper</span>
         </div>
+
         {account ? (
-          <button className="connect-btn connected">
+          <button className="btn btn-connected">
+            <span className={chainId === SEPOLIA_CHAIN_ID ? 'dot-green' : 'dot-red'}></span>
             {account.slice(0, 6)}...{account.slice(-4)}
           </button>
         ) : (
-          <button className="connect-btn" onClick={connectWallet}>
-            Connect Wallet
+          <button
+            className="btn btn-primary"
+            onClick={connectWallet}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Connecting...' : 'Connect Wallet'}
           </button>
         )}
       </header>
 
       {/* Main Content */}
-      <main className="main-content">
+      <main className="main">
         {/* Left Panel - Deposit */}
-        <div className="card slide-up" style={{ animationDelay: '0.1s' }}>
+        <div className="card">
           <div className="card-header">
-            <div className="card-icon">⚡</div>
-            <h2 className="card-title">Leverage Loop</h2>
+            <span className="card-icon">⚡</span>
+            <h2>Leverage Loop</h2>
           </div>
 
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          <p className="card-description">
             Deposit ETH to automatically create a leveraged position on Aave.
             The Reactive Network orchestrates multi-step supply/borrow/swap loops.
           </p>
 
           <div className="input-group">
-            <label className="input-label">Deposit Amount</label>
+            <label>Deposit Amount</label>
             <div className="input-wrapper">
               <input
                 type="number"
-                className="input-field"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
                 min="0.01"
                 step="0.01"
-                disabled={isLooping}
+                disabled={isLoading}
               />
-              <span className="input-suffix">ETH</span>
+              <span className="suffix">ETH</span>
             </div>
           </div>
 
-          <div className="progress-container">
+          <div className="progress-group">
             <div className="progress-header">
-              <span className="progress-label">Target LTV</span>
-              <span className="progress-value">{formatLTV(stats.targetLTV)}</span>
+              <span>Target LTV</span>
+              <span>{targetLTV}%</span>
             </div>
             <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${Number(stats.targetLTV) / 100}%` }}
-              />
+              <div className="progress-fill" style={{ width: `${parseFloat(targetLTV)}%` }}></div>
             </div>
           </div>
 
           <button
-            className="btn btn-primary"
+            className="btn btn-primary btn-full"
             onClick={handleDeposit}
-            disabled={!account || isLooping || parseFloat(depositAmount) < 0.01}
+            disabled={!account || isLoading || parseFloat(depositAmount) < 0.01}
           >
-            {isLooping ? '⏳ Processing...' : '🚀 Start Leverage Loop'}
+            {isLoading ? '⏳ Processing...' : '🚀 Start Leverage Loop'}
           </button>
 
-          <ul className="feature-list">
-            <li className="feature-item">
-              <span className="feature-icon">✓</span>
-              <span className="feature-text">Automated multi-step looping</span>
-            </li>
-            <li className="feature-item">
-              <span className="feature-icon">✓</span>
-              <span className="feature-text">Dynamic termination (no fixed iterations)</span>
-            </li>
-            <li className="feature-item">
-              <span className="feature-icon">✓</span>
-              <span className="feature-text">Slippage protection (max 1%)</span>
-            </li>
-            <li className="feature-item">
-              <span className="feature-icon">✓</span>
-              <span className="feature-text">Health factor monitoring (min 1.5)</span>
-            </li>
+          <ul className="features">
+            <li><span className="check">✓</span> Automated multi-step looping</li>
+            <li><span className="check">✓</span> Dynamic termination (no fixed iterations)</li>
+            <li><span className="check">✓</span> Slippage protection (max 1%)</li>
+            <li><span className="check">✓</span> Health factor monitoring (min 1.5)</li>
           </ul>
         </div>
 
-        {/* Right Panel - Position */}
-        <div className="card slide-up" style={{ animationDelay: '0.2s' }}>
+        {/* Right Panel - Status */}
+        <div className="card">
           <div className="card-header">
-            <div className="card-icon">📊</div>
-            <h2 className="card-title">Position Status</h2>
+            <span className="card-icon">📊</span>
+            <h2>Position Status</h2>
           </div>
 
           <div className="stats-grid">
-            <div className="stat-item">
-              <div className="stat-label">Current LTV</div>
-              <div className="stat-value">{formatLTV(stats.currentLTV)}</div>
+            <div className="stat">
+              <span className="stat-label">Current LTV</span>
+              <span className="stat-value">{currentLTV}%</span>
             </div>
-            <div className="stat-item">
-              <div className="stat-label">Target LTV</div>
-              <div className="stat-value">{formatLTV(stats.targetLTV)}</div>
+            <div className="stat">
+              <span className="stat-label">Target LTV</span>
+              <span className="stat-value">{targetLTV}%</span>
             </div>
-            <div className="stat-item">
-              <div className="stat-label">Health Factor</div>
-              <div className={`stat-value ${getHealthFactorClass(stats.healthFactor)}`}>
-                {formatHealthFactor(stats.healthFactor)}
-              </div>
+            <div className="stat">
+              <span className="stat-label">Health Factor</span>
+              <span className={`stat-value ${getHealthClass()}`}>{healthFactor}</span>
             </div>
-            <div className="stat-item">
-              <div className="stat-label">Status</div>
-              <div className={`status-badge ${isLooping ? 'pending' : account ? 'active' : 'inactive'}`}>
+            <div className="stat">
+              <span className="stat-label">Status</span>
+              <span className={`status-badge ${account ? 'active' : 'inactive'}`}>
                 <span className="status-dot"></span>
-                {isLooping ? 'Looping' : account ? 'Ready' : 'Disconnected'}
-              </div>
+                {account ? 'Ready' : 'Disconnected'}
+              </span>
             </div>
           </div>
 
-          <div className="progress-container">
+          <div className="progress-group">
             <div className="progress-header">
-              <span className="progress-label">Loop Progress</span>
-              <span className="progress-value">
-                {stats.currentLTV && stats.targetLTV
-                  ? Math.min(100, Math.round((Number(stats.currentLTV) / Number(stats.targetLTV)) * 100))
-                  : 0}%
-              </span>
+              <span>Loop Progress</span>
+              <span>{loopProgress.toFixed(0)}%</span>
             </div>
             <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{
-                  width: `${stats.currentLTV && stats.targetLTV
-                    ? Math.min(100, (Number(stats.currentLTV) / Number(stats.targetLTV)) * 100)
-                    : 0}%`
-                }}
-              />
+              <div className="progress-fill" style={{ width: `${loopProgress}%` }}></div>
             </div>
           </div>
 
           <button
-            className="btn btn-danger"
+            className="btn btn-danger btn-full"
             onClick={handleUnwind}
-            disabled={!account || isLooping}
+            disabled={!account || isLoading}
           >
             🔓 Safe Unwind Position
           </button>
 
-          {/* Logs */}
-          <div style={{ marginTop: '1.5rem' }}>
-            <h3 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-              Activity Log
-            </h3>
-            <div className="logs-panel">
+          {/* Activity Log */}
+          <div className="logs-section">
+            <h3>Activity Log</h3>
+            <div className="logs">
               {logs.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', padding: '1rem', textAlign: 'center' }}>
-                  Connect wallet to get started...
-                </div>
+                <div className="log-empty">Connect wallet to get started...</div>
               ) : (
                 logs.map((log, i) => (
                   <div key={i} className="log-entry">
-                    <span className="log-time">{log.time}</span>
-                    <span className={`log-message ${log.type}`}>{log.msg}</span>
+                    <span className="log-time">{log.timestamp}</span>
+                    <span className={`log-message ${log.type}`}>{log.message}</span>
                   </div>
                 ))
               )}
@@ -354,15 +433,12 @@ function App() {
 
       {/* Footer */}
       <footer className="footer">
-        <span className="footer-text">
-          Built with 💜 for the Reactive Network Hackathon
-        </span>
+        <span>Built with 💙 for the Reactive Network Hackathon</span>
         <div className="footer-links">
           <a
             href={`https://sepolia.etherscan.io/address/${LOOPER_VAULT_ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="footer-link"
           >
             View Contract ↗
           </a>
@@ -370,7 +446,6 @@ function App() {
             href="https://reactive.network"
             target="_blank"
             rel="noopener noreferrer"
-            className="footer-link"
           >
             Reactive Network ↗
           </a>
