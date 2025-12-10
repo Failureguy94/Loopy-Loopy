@@ -2,39 +2,39 @@
   Reactive Looper - Dark theme inspired by Reactive Network
   Colors: Dark backgrounds, purple/blue/cyan gradients
 */
-@import "tailwindcss";
+
 :root {
   /* Base colors */
   --bg-primary: #0a0a0f;
   --bg-secondary: #12121a;
   --bg-card: rgba(18, 18, 26, 0.8);
   --bg-card-hover: rgba(25, 25, 35, 0.9);
-  
+
   /* Accent gradients - Reactive Network style */
   --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
   --gradient-secondary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   --gradient-accent: linear-gradient(90deg, #06b6d4, #8b5cf6, #ec4899);
   --gradient-glow: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
-  
+
   /* Text colors */
   --text-primary: #ffffff;
   --text-secondary: #a1a1aa;
   --text-muted: #71717a;
-  
+
   /* Border colors */
   --border-color: rgba(139, 92, 246, 0.2);
   --border-hover: rgba(139, 92, 246, 0.4);
-  
+
   /* Status colors */
   --success: #10b981;
   --warning: #f59e0b;
   --error: #ef4444;
   --info: #06b6d4;
-  
+
   /* Shadows */
   --shadow-glow: 0 0 60px rgba(139, 92, 246, 0.3);
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
-  
+
   /* Fonts */
   --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
@@ -67,7 +67,7 @@ body::before {
   left: -50%;
   width: 200%;
   height: 200%;
-  background: 
+  background:
     radial-gradient(ellipse at 20% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
     radial-gradient(ellipse at 80% 70%, rgba(6, 182, 212, 0.1) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
@@ -76,9 +76,19 @@ body::before {
 }
 
 @keyframes bgShift {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  33% { transform: translate(-5%, 5%) rotate(1deg); }
-  66% { transform: translate(5%, -5%) rotate(-1deg); }
+
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  33% {
+    transform: translate(-5%, 5%) rotate(1deg);
+  }
+
+  66% {
+    transform: translate(5%, -5%) rotate(-1deg);
+  }
 }
 
 /* Grid pattern overlay */
@@ -89,7 +99,7 @@ body::after {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
+  background-image:
     linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
   background-size: 50px 50px;
@@ -104,7 +114,12 @@ body::after {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -118,8 +133,13 @@ h1 {
   background-clip: text;
 }
 
-h2 { font-size: 1.75rem; }
-h3 { font-size: 1.25rem; }
+h2 {
+  font-size: 1.75rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
 
 /* App Container */
 .app-container {
@@ -275,9 +295,20 @@ h3 { font-size: 1.25rem; }
   background-clip: text;
 }
 
-.stat-value.success { color: var(--success); -webkit-text-fill-color: var(--success); }
-.stat-value.warning { color: var(--warning); -webkit-text-fill-color: var(--warning); }
-.stat-value.error { color: var(--error); -webkit-text-fill-color: var(--error); }
+.stat-value.success {
+  color: var(--success);
+  -webkit-text-fill-color: var(--success);
+}
+
+.stat-value.warning {
+  color: var(--warning);
+  -webkit-text-fill-color: var(--warning);
+}
+
+.stat-value.error {
+  color: var(--error);
+  -webkit-text-fill-color: var(--error);
+}
 
 /* Input */
 .input-group {
@@ -443,9 +474,17 @@ h3 { font-size: 1.25rem; }
   color: var(--info);
 }
 
-.log-message.success { color: var(--success); }
-.log-message.error { color: var(--error); }
-.log-message.warning { color: var(--warning); }
+.log-message.success {
+  color: var(--success);
+}
+
+.log-message.error {
+  color: var(--error);
+}
+
+.log-message.warning {
+  color: var(--warning);
+}
 
 /* Status Badge */
 .status-badge {
@@ -485,8 +524,15 @@ h3 { font-size: 1.25rem; }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Feature List */
@@ -562,8 +608,15 @@ h3 { font-size: 1.25rem; }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .slide-up {
@@ -571,8 +624,15 @@ h3 { font-size: 1.25rem; }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Scrollbar */
