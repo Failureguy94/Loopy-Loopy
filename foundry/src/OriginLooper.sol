@@ -107,7 +107,6 @@ contract OriginLooper {
         emit LoopCompleted(currentLTV, iterations);
     }
 
-    // Allow the Reactive Sender (ReactiveLooper or System Contract) to call this.
     modifier onlyReactive() {
         require(
             msg.sender == reactiveSender || msg.sender == address(this),

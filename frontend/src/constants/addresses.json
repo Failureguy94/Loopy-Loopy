@@ -1,0 +1,19 @@
+{
+    "sepolia": {
+        "chainId": 11155111,
+        "looperVault": "NOT_DEPLOYED_YET",
+        "liquidationShieldVault": "NOT_DEPLOYED_YET",
+        "protectionExecutor": "NOT_DEPLOYED_YET",
+        "originLooper": "NOT_DEPLOYED_YET",
+        "callbackSender": "0x33Bbb7D0a2F1029550B0e91f653c4055DC9F4Dd8",
+        "deploymentBlock": 0,
+        "note": "Update these addresses after deploying to Sepolia"
+    },
+    "reactiveKopli": {
+        "chainId": 5318008,
+        "reactiveLooper": "NOT_DEPLOYED_YET",
+        "reactiveShieldMonitor": "NOT_DEPLOYED_YET",
+        "systemContract": "0x0000000000000000000000000000000000FFFFFF",
+        "note": "Update these addresses after deploying to Reactive Kopli testnet"
+    }
+}
