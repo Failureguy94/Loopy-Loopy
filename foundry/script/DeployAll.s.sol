@@ -3,11 +3,11 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "../src/LooperVault.sol";
-import "../src/ReactiveLooper.sol";
-import "../src/LiquidationShieldVault.sol";
-import "../src/ProtectionExecutor.sol";
 import "../src/OriginLooper.sol";
+import "../src/ProtectionExecutor.sol";
+import "../src/ReactiveLooper.sol";
 import "../src/ReactiveShieldMonitor.sol";
+import "../src/LiquidationShieldVault.sol";
 
 contract DeploySepoliaAll is Script {
     function run() external {
