@@ -40,8 +40,8 @@ contract DeployReactive is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy ReactiveLooper
-        ReactiveLooper looper = new ReactiveLooper(
+        // Deploy ReactiveLooper with some ETH for subscription fees
+        ReactiveLooper looper = new ReactiveLooper{value: 0.1 ether}(
             systemContract,
             vaultContract
         );
