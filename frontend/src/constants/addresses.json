@@ -11,7 +11,7 @@
     },
     "reactiveLasna": {
         "chainId": 5318007,
-        "reactiveLooper": "NOT_DEPLOYED_YET",
+        "reactiveLooper": "0x90ba5d02c0c93E6eEc3cb54048b4C0b6be64E434",
         "reactiveShieldMonitor": "NOT_DEPLOYED_YET",
         "systemContract": "0x0000000000000000000000000000000000FFFFFF",
         "note": "Update these addresses after deploying to Reactive lasna testnet"
