@@ -75,14 +75,12 @@ contract DeployReactiveAll is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        ReactiveLooper reactiveLooper = new ReactiveLooper(
-            systemContract,
+        ReactiveLooper reactiveLooper = new ReactiveLooper{value: 0.1 ether}(
             looperVaultAddr
         );
         console.log("ReactiveLooper deployed at:", address(reactiveLooper));
 
-        ReactiveShieldMonitor shieldMonitor = new ReactiveShieldMonitor(
-            systemContract,
+        ReactiveShieldMonitor shieldMonitor = new ReactiveShieldMonitor{value: 0.1 ether}(
             shieldVaultAddr,
             protectionExecutorAddr
         );
@@ -171,8 +169,7 @@ contract DeployReactiveLooper is Script {
         address vaultContract = vm.envAddress("LOOPER_VAULT_ADDR");
 
         vm.startBroadcast(deployerPrivateKey);
-        ReactiveLooper looper = new ReactiveLooper(
-            systemContract,
+        ReactiveLooper looper = new ReactiveLooper{value: 0.1 ether}(
             vaultContract
         );
         vm.stopBroadcast();
@@ -191,8 +188,7 @@ contract DeployReactiveShieldMonitor is Script {
         );
 
         vm.startBroadcast(deployerPrivateKey);
-        ReactiveShieldMonitor monitor = new ReactiveShieldMonitor(
-            systemContract,
+        ReactiveShieldMonitor monitor = new ReactiveShieldMonitor{value: 0.1 ether}(
             shieldVaultAddr,
             protectionExecutorAddr
         );

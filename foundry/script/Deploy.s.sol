@@ -35,14 +35,12 @@ contract DeploySepolia is Script {
 contract DeployReactive is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("REACTIVE_PRIVATE_KEY");
-        address systemContract = vm.envAddress("SYSTEM_CONTRACT_ADDR");
         address vaultContract = vm.envAddress("VAULT_CONTRACT_ADDR");
 
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy ReactiveLooper with some ETH for subscription fees
         ReactiveLooper looper = new ReactiveLooper{value: 0.1 ether}(
-            systemContract,
             vaultContract
         );
         console.log("ReactiveLooper deployed at:", address(looper));
